@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Support Assistant</title>
+<style>
+  :root {
+    --bg: #0b1020; --panel: #131a2e; --panel2: #1a2340;
+    --text: #e8ecf6; --muted: #93a0bd; --accent: #6d8dff; --accent2: #22c3a6;
+    --danger: #ff7a7a; --radius: 14px;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg:#f3f5fb; --panel:#ffffff; --panel2:#e9edf8;
+            --text:#141a2b; --muted:#5b678a; }
+    header { background:linear-gradient(90deg,#e9edf8,#dde5fa); border-bottom-color:#ccd6f2; }
+    .bot { border-color:#d5ddf3; }
+    .chip { border-color:#ccd6f2; }
+    .inputrow { border-color:#ccd6f2; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+         background:var(--bg); color:var(--text); height:100vh; display:flex; flex-direction:column; }
+  header { padding:14px 22px; background:linear-gradient(90deg,#131a2e,#1b2547);
+           display:flex; align-items:center; gap:12px; border-bottom:1px solid #232e52; }
+  header .dot { width:10px; height:10px; border-radius:50%; background:var(--accent2); }
+  header h1 { font-size:16px; margin:0; font-weight:600; letter-spacing:.3px; }
+  header .ver { margin-left:auto; color:var(--muted); font-size:12px; }
+  #chat { flex:1; overflow-y:auto; padding:22px; display:flex; flex-direction:column; gap:14px; }
+  .msg { max-width:74%; padding:12px 16px; border-radius:var(--radius); line-height:1.5;
+         font-size:14.5px; white-space:pre-wrap; word-wrap:break-word; }
+  .user { align-self:flex-end; background:linear-gradient(135deg,#3c5bd8,#6d8dff); color:#fff;
+          border-bottom-right-radius:4px; }
+  .bot  { align-self:flex-start; background:var(--panel); border:1px solid #232e52;
+          border-bottom-left-radius:4px; }
+  .bot.escalated { border-color:var(--danger); }
+  .cites { margin-top:10px; display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { font-size:12px; padding:3px 10px; border-radius:999px; background:var(--panel2);
+          border:1px solid #2a3763; color:var(--muted); cursor:default; }
+  .chip a { color:var(--accent); text-decoration:none; }
+  .meta { margin-top:8px; font-size:11.5px; color:var(--muted); display:flex; gap:12px; align-items:center; }
+  .fb button { background:none; border:1px solid #2a3763; color:var(--muted); border-radius:8px;
+               padding:2px 8px; cursor:pointer; font-size:12px; }
+  .fb button:hover { color:var(--text); border-color:var(--accent); }
+  .fb button.sel { color:var(--accent2); border-color:var(--accent2); }
+  .banner { font-size:12.5px; color:var(--danger); margin-top:8px; }
+  .typing { color:var(--muted); font-size:13px; align-self:flex-start; padding:6px 2px; }
+  footer { padding:16px 22px 20px; background:var(--bg); }
+  .inputrow { display:flex; gap:10px; background:var(--panel); border:1px solid #232e52;
+              border-radius:var(--radius); padding:8px 8px 8px 16px; }
+  .inputrow:focus-within { border-color:var(--accent); }
+  textarea { flex:1; background:none; border:none; outline:none; resize:none; color:var(--text);
+             font-size:14.5px; font-family:inherit; height:24px; max-height:120px; }
+  #send { background:linear-gradient(135deg,#3c5bd8,#6d8dff); color:#fff; border:none;
+          border-radius:10px; padding:0 18px; font-size:14px; cursor:pointer; }
+  #send:disabled { opacity:.5; cursor:default; }
+</style>
+</head>
+<body>
+<header>
+  <div class="dot"></div><h1>Support Assistant</h1>
+  <span class="ver" id="ver"></span>
+</header>
+<div id="chat">
+  <div class="msg bot">Hi! Ask me anything about your account, orders, payments, or setting up your site.</div>
+</div>
+<footer>
+  <div class="inputrow">
+    <textarea id="q" rows="1" placeholder="Type your question…"></textarea>
+    <button id="send">Send</button>
+  </div>
+</footer>
+<script>
+const chat = document.getElementById('chat');
+const input = document.getElementById('q');
+const send = document.getElementById('send');
+
+fetch('/health').then(r=>r.json()).then(h=>{
+  document.getElementById('ver').textContent =
+    h.kb_version + ' · ' + h.generation_model;
+}).catch(()=>{});
+
+function add(cls, text) {
+  const d = document.createElement('div');
+  d.className = 'msg ' + cls;
+  d.textContent = text;
+  chat.appendChild(d);
+  chat.scrollTop = chat.scrollHeight;
+  return d;
+}
+
+function feedbackRow(requestId) {
+  const wrap = document.createElement('span');
+  wrap.className = 'fb';
+  const up = document.createElement('button'); up.textContent = 'Helpful';
+  const down = document.createElement('button'); down.textContent = 'Not helpful';
+  const post = (helpful, btn, other) => {
+    fetch('/feedback', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({request_id: requestId, helpful})});
+    btn.classList.add('sel'); other.disabled = true; btn.disabled = true;
+  };
+  up.onclick = () => post(true, up, down);
+  down.onclick = () => post(false, down, up);
+  wrap.append(up, down);
+  return wrap;
+}
+
+async function ask() {
+  const question = input.value.trim();
+  if (!question) return;
+  input.value = ''; input.style.height = '24px';
+  send.disabled = true;
+  add('user', question);
+  const typing = add('typing', 'Thinking…');
+  try {
+    const r = await fetch('/ask', {method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({question})});
+    const data = await r.json();
+    typing.remove();
+    const el = add('bot' + (data.escalate ? ' escalated' : ''), data.answer);
+
+    if (data.citations && data.citations.length) {
+      const c = document.createElement('div'); c.className = 'cites';
+      for (const cite of data.citations) {
+        const chip = document.createElement('span'); chip.className = 'chip';
+        if (cite.url) {
+          const a = document.createElement('a'); a.href = cite.url; a.target = '_blank';
+          a.textContent = '[' + cite.n + '] ' + (cite.title || cite.doc_id.slice(0,8));
+          chip.appendChild(a);
+        } else {
+          chip.textContent = '[' + cite.n + '] ' + (cite.title || 'source');
+        }
+        c.appendChild(chip);
+      }
+      el.appendChild(c);
+    }
+    if (data.escalate) {
+      const b = document.createElement('div'); b.className = 'banner';
+      b.textContent = 'Escalated to a support agent.';
+      el.appendChild(b);
+      if (data.fallback_links && data.fallback_links.length) {
+        const c = document.createElement('div'); c.className = 'cites';
+        for (const l of data.fallback_links) {
+          const chip = document.createElement('span'); chip.className = 'chip';
+          if (l.url) {
+            const a = document.createElement('a'); a.href = l.url; a.target = '_blank';
+            a.textContent = l.title; chip.appendChild(a);
+          } else chip.textContent = l.title;
+          c.appendChild(chip);
+        }
+        el.appendChild(c);
+      }
+    }
+    const meta = document.createElement('div'); meta.className = 'meta';
+    if (data.latency_s != null) {
+      const t = document.createElement('span');
+      t.textContent = data.latency_s.toFixed(1) + 's';
+      meta.appendChild(t);
+    }
+    meta.appendChild(feedbackRow(data.request_id));
+    el.appendChild(meta);
+  } catch (e) {
+    typing.remove();
+    add('bot escalated', 'Something went wrong reaching the assistant. Is the API running?');
+  }
+  send.disabled = false;
+  input.focus();
+}
+
+send.onclick = ask;
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(); }
+});
+input.addEventListener('input', () => {
+  input.style.height = '24px';
+  input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+});
+</script>
+</body>
+</html>

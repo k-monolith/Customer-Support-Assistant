@@ -1,0 +1,4 @@
+* text=auto
+*.npy binary
+*.parquet binary
+*.pkl binary

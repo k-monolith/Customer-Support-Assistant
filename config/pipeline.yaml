@@ -1,0 +1,35 @@
+# All tunables live here. Endpoints and secrets come from environment variables only.
+version: support_kb_v1
+
+chunking:
+  target_tokens: 400
+  overlap_ratio: 0.12
+  config_hash: "9bd970e9"        # identifies the chunking run the index was built from
+
+embedding:
+  model: "Qwen/Qwen3-Embedding-0.6B"
+  query_prompt_name: "query"     # queries use the model's query prompt; documents use none
+  batch_size: 64
+
+retrieval:
+  dense_top_k: 50
+  bm25_top_k: 50
+  rrf_k: 60                      # RRF constant, not a cutoff
+  fused_candidates: 60           # candidates passed to the reranker
+
+rerank:
+  model: "BAAI/bge-reranker-v2-m3"
+  keep_top_n: 6
+  max_length: 1024
+  batch_size: 32
+
+generation:
+  model: "llama3.1:8b"           # served by Ollama; endpoint from GEN_BASE_URL
+  temperature: 0.2
+  max_tokens: 700
+
+guards:
+  pii_masking: true              # Presidio; masks logs/traces, never blocks the question
+  injection_screen: true
+  grounding_check: true          # extra model call that checks the answer against the passages
+  abstain_sentence: "I don't have enough information to answer this. Let me connect you with a support agent."

@@ -1,0 +1,27 @@
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports: ["6333:6333"]
+    volumes: ["qdrant_storage:/qdrant/storage"]
+
+  ollama:
+    image: ollama/ollama:latest
+    ports: ["11434:11434"]
+    volumes: ["ollama_models:/root/.ollama"]
+    # After first start: docker compose exec ollama ollama pull llama3.1:8b
+
+  api:
+    build: .
+    ports: ["8000:8000"]
+    environment:
+      GEN_BASE_URL: http://ollama:11434/v1
+      QDRANT_URL: http://qdrant:6333
+      ARTIFACTS_DIR: /app/artifacts
+      # LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY / LANGFUSE_HOST -> enable tracing
+    volumes:
+      - ./artifacts:/app/artifacts:ro
+    depends_on: [qdrant, ollama]
+
+volumes:
+  qdrant_storage:
+  ollama_models:
