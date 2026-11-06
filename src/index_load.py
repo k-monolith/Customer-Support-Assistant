@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from .config import load_config
+from .retrieval import nullify
 
 PAYLOAD_COLS = ["text", "doc_id", "chunk_id", "position", "source",
                 "category", "intent", "title"]
@@ -22,7 +23,7 @@ def main():
 
     meta = json.load(open(art / f"index_meta_{version}.json"))
     vecs = np.load(art / f"embeddings_{version}.npy")
-    payload = pd.read_parquet(art / f"index_payload_{version}.parquet")
+    payload = nullify(pd.read_parquet(art / f"index_payload_{version}.parquet"))
     assert meta["n_chunks"] == len(payload) == len(vecs)
     print(f"artifacts OK: {len(payload)} chunks, dim {vecs.shape[1]}")
 

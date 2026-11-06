@@ -1,6 +1,7 @@
 """FastAPI service: /ask, /feedback, /health, plus the chat UI at /.
 Models load once at startup. The pipeline is provided through a dependency so
 tests can substitute a stub without touching the endpoints."""
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -82,7 +83,8 @@ def health():
             "kb_version": cfg["version"],
             "chunk_config_hash": cfg["chunking"]["config_hash"],
             "prompt_version": "answer_v1",
-            "generation_model": cfg["generation"]["model"]}
+            "generation_model": cfg["generation"]["model"],
+            "commit": os.environ.get("GIT_COMMIT", "unknown")}
 
 
 @app.get("/")

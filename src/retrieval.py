@@ -7,6 +7,16 @@ import numpy as np
 import pandas as pd
 
 
+def nullify(df: pd.DataFrame) -> pd.DataFrame:
+    """Replace every missing value (NaN/NA) with None.
+
+    pandas 3 reads missing Parquet strings back as NaN (a float), which is
+    truthy and not JSON-serializable; None is both falsy and serializable.
+    Bitext rows have no title, WixQA rows have no intent/category, so this
+    runs on every payload load."""
+    return df.astype(object).where(df.notna(), None)
+
+
 def rrf(rankings, k=60):
     scores = {}
     for ranked in rankings:
@@ -26,7 +36,7 @@ class HybridRetriever:
         self.cfg = cfg["retrieval"]
         self.collection = version
 
-        self.payload = pd.read_parquet(art / f"index_payload_{version}.parquet")
+        self.payload = nullify(pd.read_parquet(art / f"index_payload_{version}.parquet"))
         with open(art / f"bm25_corpus_{version}.pkl", "rb") as f:
             bm25_data = pickle.load(f)
         assert bm25_data["version"] == version

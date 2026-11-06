@@ -30,6 +30,7 @@ class SupportPipeline:
         self.system_prompt, self.user_template = load_prompt(self.prompt_version)
         self.abstain = cfg["guards"]["abstain_sentence"]
         self.grounding_enabled = cfg["guards"]["grounding_check"]
+        self.injection_enabled = cfg["guards"]["injection_screen"]
 
     # -- output-guard helpers -------------------------------------------------
     def _grounding_check(self, context, answer):
@@ -58,7 +59,7 @@ class SupportPipeline:
         masked_q, pii_ents = self.masker.mask(question)
         trace["masked_question"] = masked_q
         trace["guards"]["input_pii_entities"] = pii_ents
-        inj, pattern = injection_screen(question)
+        inj, pattern = injection_screen(question) if self.injection_enabled else (False, None)
         trace["guards"]["injection"] = {"hit": inj, "pattern": pattern}
         trace["stages"]["input_guards_s"] = round(time.time() - t0, 3)
         if inj:
@@ -101,6 +102,7 @@ class SupportPipeline:
         else:
             grounded, verdict = True, "SKIPPED"
         out_masked, out_pii = self.masker.mask(draft)
+        trace["masked_answer"] = out_masked        # tracing may only see masked text
         trace["guards"]["citations"] = {"valid": valid_cites, "invalid": invalid_cites}
         trace["guards"]["grounding"] = verdict
         trace["guards"]["output_pii_entities"] = out_pii

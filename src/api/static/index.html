@@ -96,7 +96,7 @@ function feedbackRow(requestId) {
   const down = document.createElement('button'); down.textContent = 'Not helpful';
   const post = (helpful, btn, other) => {
     fetch('/feedback', {method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({request_id: requestId, helpful})});
+      body: JSON.stringify({request_id: requestId, helpful})}).catch(()=>{});
     btn.classList.add('sel'); other.disabled = true; btn.disabled = true;
   };
   up.onclick = () => post(true, up, down);
@@ -116,6 +116,7 @@ async function ask() {
     const r = await fetch('/ask', {method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({question})});
+    if (!r.ok) throw new Error('HTTP ' + r.status);
     const data = await r.json();
     typing.remove();
     const el = add('bot' + (data.escalate ? ' escalated' : ''), data.answer);

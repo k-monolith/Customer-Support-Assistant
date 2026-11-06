@@ -6,3 +6,4 @@ artifacts/*
 .pytest_cache/
 .venv/
 venv/
+Claude outputs/

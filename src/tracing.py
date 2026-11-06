@@ -20,9 +20,13 @@ class LangfuseTracer:
 
     def trace_request(self, result: dict):
         tr = result["trace"]
+        # Only masked text may reach Langfuse. On refusal/abstention/guard-failure
+        # paths the answer is a fixed sentence with no user content, so it is
+        # safe as a fallback when no masked_answer was produced.
+        masked = tr.get("masked_answer", result["answer"])
         t = self.client.trace(id=tr["request_id"], name="ask",
                               input={"masked_question": tr["masked_question"]},
-                              output={"answer": result["answer"][:500],
+                              output={"answer": masked[:500],
                                       "escalate": result["escalate"]},
                               metadata={"prompt_version": tr["prompt_version"],
                                         "model": tr["model"],

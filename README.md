@@ -91,6 +91,7 @@ Requires Docker Desktop (or Docker Engine with Compose).
 docker compose up -d qdrant ollama
 docker compose exec ollama ollama pull llama3.1:8b     # once, about 5 GB
 docker compose build api
+docker compose run --rm api python scripts/verify_artifacts.py /app/artifacts  # integrity check
 docker compose run --rm api python -m src.index_load   # once per index version
 docker compose up -d api
 ```
@@ -109,6 +110,7 @@ python -m venv .venv
 pip install -r requirements.txt
 python -m spacy download en_core_web_lg
 ollama pull llama3.1:8b
+python scripts/verify_artifacts.py      # integrity check on ./artifacts
 python -m src.index_load
 uvicorn src.api.main:app --reload
 ```

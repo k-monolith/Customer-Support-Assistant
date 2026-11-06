@@ -1,14 +1,24 @@
 services:
   qdrant:
-    image: qdrant/qdrant:latest
+    image: qdrant/qdrant:v1.20.0   # matches qdrant-client 1.20.0
     ports: ["6333:6333"]
     volumes: ["qdrant_storage:/qdrant/storage"]
 
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.40.15
     ports: ["11434:11434"]
     volumes: ["ollama_models:/root/.ollama"]
+    environment:
+      OLLAMA_CONTEXT_LENGTH: "8192"   # default can be 4k; 6 passages + prompt + 700 output tokens need headroom
     # After first start: docker compose exec ollama ollama pull llama3.1:8b
+    # With an NVIDIA GPU + NVIDIA Container Toolkit, uncomment:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
 
   api:
     build: .
@@ -17,11 +27,14 @@ services:
       GEN_BASE_URL: http://ollama:11434/v1
       QDRANT_URL: http://qdrant:6333
       ARTIFACTS_DIR: /app/artifacts
+      GIT_COMMIT: ${GIT_COMMIT:-unknown}   # set with: GIT_COMMIT=$(git rev-parse --short HEAD) docker compose up -d api
       # LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY / LANGFUSE_HOST -> enable tracing
     volumes:
       - ./artifacts:/app/artifacts:ro
+      - hf_cache:/root/.cache/huggingface   # keep downloaded models across container recreation
     depends_on: [qdrant, ollama]
 
 volumes:
   qdrant_storage:
   ollama_models:
+  hf_cache:
